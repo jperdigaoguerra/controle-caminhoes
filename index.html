@@ -879,6 +879,7 @@
   <input type="file" id="fileRestore" accept="application/json" hidden>
   <input type="file" id="fileLogo" accept="image/*" hidden>
   <span id="statusNuvem">Conectando...</span>
+  <span style="margin-left:auto;font-family:'Roboto Mono',monospace;font-size:11.5px;opacity:.75">versão 2026-09-20 · correção por dia</span>
 </div>
 
 </main>
@@ -1879,7 +1880,10 @@ function renderTrucks(){
       <td class="num">${brl(t.valorCompra)}</td>
       <td class="num">${t.docs?brl(t.docs):"—"}</td>
       <td class="num">${rt?brl(rt):"—"}${n?`<span class="sub">${n} serviço(s)</span>`:""}</td>
-      <td class="num strong">${brl(costTotal(t))}${correcaoDe(t)>0?`<span class="sub">corrigido: ${brl(custoCorrigido(t))}</span>`:""}</td>
+      <td class="num strong">${brl(costTotal(t))}
+        ${(t.indice||0)>0
+           ? `<span class="sub">corrigido: ${brl(custoCorrigido(t))}</span><span class="sub">${plain(t.indice)}% · ${tempoTexto(t)}</span>`
+           : `<span class="sub">sem índice informado</span>`}</td>
       <td><div class="row-actions">
         <button class="icon" data-edit-truck="${t.id}">Editar</button>
         <button class="icon danger" data-del-truck="${t.id}">Excluir</button>
