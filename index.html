@@ -1196,10 +1196,31 @@ function mesesEntre(ini, fim){
   return Math.max(0, m);
 }
 const mesesDe = t => mesesEntre(t.dataCompra, (saleOf(t.id)||{}).data || null);
+
+// meses cheios + a parte proporcional dos dias já corridos do mês em curso
+function tempoCorrecao(t){
+  const ini = t.dataCompra;
+  if (!ini) return { meses:0, dias:0, total:0 };
+  const fim = (saleOf(t.id)||{}).data || null;
+  const meses = mesesEntre(ini, fim);
+  const a = new Date(ini+"T12:00:00");
+  if (isNaN(a)) return { meses:0, dias:0, total:0 };
+  const marco = new Date(a.getFullYear(), a.getMonth()+meses, a.getDate(), 12,0,0,0);
+  const b = fim ? new Date(fim+"T12:00:00") : new Date();
+  b.setHours(12,0,0,0);
+  const dias = Math.max(0, Math.round((b - marco)/86400000));
+  const fracao = Math.min(1, dias/30);
+  return { meses, dias, total: meses + fracao };
+}
+const tempoTexto = t => {
+  const d = tempoCorrecao(t);
+  if (!d.meses && !d.dias) return "—";
+  return `${d.meses}m${d.dias ? " " + d.dias + "d" : ""}`;
+};
 function fatorCorrecao(t){
   const i = (t.indice||0)/100;
   if (i <= 0) return 1;
-  return Math.pow(1+i, mesesDe(t));
+  return Math.pow(1+i, tempoCorrecao(t).total);
 }
 const custoCorrigido = t => costTotal(t) * fatorCorrecao(t);
 const correcaoDe = t => custoCorrigido(t) - costTotal(t);
@@ -1687,7 +1708,10 @@ function updateSaleHint(){
     return;
   }
   let txt = `Custo: ${brl(costTotal(t))} (compra ${brl(buyTotal(t))} + reformas ${brl(reformTotal(t.id))}).`;
-  if (correcaoDe(t) > 0) txt += ` Corrigido em ${mesesDe(t)} mês(es): ${brl(custoCorrigido(t))}.`;
+  if (correcaoDe(t) > 0){
+    const dt = tempoCorrecao(t);
+    txt += ` Corrigido por ${dt.meses} mês(es) e ${dt.dias} dia(s): ${brl(custoCorrigido(t))}.`;
+  }
   $("s_custoHint").textContent = txt;
 }
 
@@ -2127,7 +2151,7 @@ function renderConsolidado(){
       <td class="num">${brl(c)}</td>
       <td class="num">${d?brl(d):"—"}</td>
       <td class="num">${r?brl(r):"—"}</td>
-      <td class="num">${x>0?brl(x):"—"}</td>
+      <td class="num">${x>0?brl(x):"—"}${x>0?`<span class="sub">${tempoTexto(t)}</span>`:""}</td>
       <td class="num strong">${brl(tot)}</td>
       <td class="num">${t.fipe?brl(t.fipe):"—"}${t.fipe?`<span class="sub">${t.fipe-tot>=0?"+":"−"} ${brl(Math.abs(t.fipe-tot))}</span>`:""}</td>
       <td class="num">${sold?brl(sold.valor):"—"}</td>
@@ -2249,7 +2273,7 @@ $("btnCsv").addEventListener("click",()=>{
   const head = ["Placa","Categoria","Marca","Modelo","Ano fab.","Ano mod.","Configuração","Tração","Carroceria","Cor","Km/Horas","Chassi","Renavam",
     "Cidade de compra","UF","Vendedor","Telefone do vendedor","Proprietário anterior","Data da compra","Dias",
     "Valor de compra","Documentação","Total reformas","Custo total",
-    "Meses desde a compra","Índice mensal (%)","Correção","Custo corrigido","Preço FIPE","Tabela FIPE de","Código FIPE","Data da venda","Plataforma","Comprador","Telefone do comprador","Aniversário do comprador","Vendedor da venda","Valor de venda","Comissão","Lucro"];
+    "Meses desde a compra","Dias do mês em curso","Índice mensal (%)","Correção","Custo corrigido","Preço FIPE","Tabela FIPE de","Código FIPE","Data da venda","Plataforma","Comprador","Telefone do comprador","Aniversário do comprador","Vendedor da venda","Valor de venda","Comissão","Lucro"];
   const rows = list.map(t=>{
     const s = saleOf(t.id);
     const tot = costTotal(t);
@@ -2257,7 +2281,7 @@ $("btnCsv").addEventListener("click",()=>{
       t.cidade,t.uf,t.vendedor,t.telVendedor,t.proprietario,fmtDate(t.dataCompra),
       daysBetween(t.dataCompra, s?s.data:null) ?? "",
       plain(t.valorCompra),plain(t.docs),plain(reformTotal(t.id)),plain(tot),
-      mesesDe(t), plain(t.indice), plain(correcaoDe(t)), plain(custoCorrigido(t)),
+      tempoCorrecao(t).meses, tempoCorrecao(t).dias, plain(t.indice), plain(correcaoDe(t)), plain(custoCorrigido(t)),
       t.fipe?plain(t.fipe):"", t.fipeRef||"", t.fipeCodigo||"",
       s?fmtDate(s.data):"", s?s.plataforma:"", s?s.comprador:"", s?s.telComprador:"", s&&s.aniversario?fmtDate(s.aniversario):"", s?s.vendedor:"",
       s?plain(s.valor):"", s?plain(s.comissao):"", s?plain(profitOf(s)):""];
