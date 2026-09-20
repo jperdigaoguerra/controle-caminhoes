@@ -204,6 +204,11 @@
     max-width:430px;width:100%;box-shadow:0 18px 50px rgba(18,35,58,.35);
   }
   .modal-card.azul{border-left-color:var(--plate)}
+  .modal-card{max-height:88vh;overflow-y:auto}
+  .fipe-box{background:#eef4fc;border:1px solid #b9cdea;border-radius:4px;padding:12px 14px}
+  .fipe-box .valor{font-family:"Roboto Mono",monospace;font-size:22px;font-weight:700;color:var(--plate)}
+  .fipe-box .det{font-size:13px;color:var(--steel);margin-top:4px}
+  .fipe-erro{color:var(--red);font-size:13.5px;font-weight:600}
   .dlg-body{padding:18px}
   .dlg-body p{margin:8px 0 0;color:var(--steel);font-size:14px}
   .dlg-foot{display:flex;gap:10px;justify-content:flex-end;padding:14px 18px;border-top:1px solid var(--line);background:#f4f7fb}
@@ -478,18 +483,24 @@
             <div class="money-wrap"><span>R$</span><input class="money" id="t_valorCompra" inputmode="decimal" placeholder="0,00"></div>
             <span class="err" id="e_t_valorCompra">Informe o valor</span>
           </div>
-          <div class="f c3">
+          <div class="f c4">
             <label for="t_docs">Despesas de documentação <span class="opt">(opcional)</span></label>
             <div class="money-wrap"><span>R$</span><input class="money" id="t_docs" inputmode="decimal" placeholder="0,00"></div>
             <span class="hint">Transferência, DUT, frete até o pátio</span>
           </div>
 
-          <div class="f c3">
+          <div class="f c4">
             <label for="t_indice">Índice de correção mensal <span class="opt">(%)</span></label>
             <div class="money-wrap"><span>%</span><input class="money" id="t_indice" inputmode="decimal" placeholder="0,00"></div>
             <span class="hint">Corrige o custo deste veículo mês a mês</span>
           </div>
-          <div class="f c6">
+          <div class="f c4">
+            <label for="t_fipe">Preço na tabela FIPE</label>
+            <div class="money-wrap"><span>R$</span><input class="money" id="t_fipe" inputmode="decimal" placeholder="0,00"></div>
+            <div style="margin-top:5px"><button type="button" class="btn quiet small" id="btnFipe">Buscar na tabela FIPE</button></div>
+            <span class="hint" id="fipeRefTexto"></span>
+          </div>
+          <div class="f c12">
             <label for="t_obs">Observações <span class="opt">(opcional)</span></label>
             <textarea id="t_obs" placeholder="Pendências, avarias, o que já foi negociado..."></textarea>
           </div>
@@ -664,7 +675,7 @@
             <span class="hint">Serve para medir o retorno de cada canal.</span>
           </div>
 
-          <div class="f c5">
+          <div class="f c4">
             <label for="s_comprador">Comprador</label>
             <input id="s_comprador" placeholder="Nome de quem comprou">
           </div>
@@ -672,7 +683,12 @@
             <label for="s_telComprador">Telefone do comprador <span class="opt">(opcional)</span></label>
             <input id="s_telComprador" inputmode="numeric" placeholder="(34) 99999-9999">
           </div>
-          <div class="f c4">
+          <div class="f c2">
+            <label for="s_aniversario">Aniversário</label>
+            <input type="date" id="s_aniversario">
+            <span class="hint">Para o cartão</span>
+          </div>
+          <div class="f c3">
             <label for="s_vendedor">Vendedor <span class="opt">(quem fechou)</span></label>
             <input id="s_vendedor" placeholder="Nome de quem atendeu">
           </div>
@@ -825,7 +841,7 @@
             <th>Situação</th><th>Placa</th><th>Veículo</th>
             <th class="num">Dias no pátio</th>
             <th class="num">Compra</th><th class="num">Documentação</th><th class="num">Reformas</th>
-            <th class="num">Correção</th><th class="num">Custo total</th>
+            <th class="num">Correção</th><th class="num">Custo total</th><th class="num">Tabela FIPE</th>
             <th class="num">Venda</th><th class="num">Lucro</th>
           </tr>
         </thead>
@@ -839,6 +855,14 @@
     </div>
   </div>
 
+  <div class="panel accent-amber">
+    <div class="panel-head">
+      <h2>Aniversários dos compradores</h2>
+      <p id="anivHint">Para enviar o cartãozinho na data</p>
+    </div>
+    <div class="panel-body" id="anivLista"></div>
+  </div>
+
   <div class="panel">
     <div class="panel-head"><h2>Pontos de atenção</h2></div>
     <div class="panel-body" id="alerts"></div>
@@ -848,13 +872,13 @@
 <div class="foot">
   <button class="btn quiet small" id="btnBackup">Baixar backup</button>
   <button class="btn quiet small" id="btnRestore">Restaurar backup</button>
-  <button class="btn quiet small" id="btnSenha">Definir senha</button>
-  <button class="btn quiet small" id="btnBloquear" hidden>Bloquear agora</button>
   <button class="btn quiet small" id="btnLogo">Trocar logo</button>
   <button class="btn quiet small" id="btnLogoOff" hidden>Remover logo</button>
+  <button class="btn quiet small" id="btnImportar">Importar dados deste computador</button>
+  <button class="btn quiet small" id="btnSair">Sair</button>
   <input type="file" id="fileRestore" accept="application/json" hidden>
   <input type="file" id="fileLogo" accept="image/*" hidden>
-  <span>Faça o backup de vez em quando: os dados ficam neste navegador.</span>
+  <span id="statusNuvem">Conectando...</span>
 </div>
 
 </main>
@@ -874,40 +898,58 @@
   </div>
 </div>
 
-<div id="lock" hidden>
-  <div class="lock-card">
-    <span class="lock-mark" id="lockLoja">Cebolinha Caminhões</span>
-    <h2 id="lockTitle">Acesso restrito</h2>
-    <p id="lockSub">Digite a senha para abrir o controle de estoque.</p>
-    <input type="password" id="lockPass" placeholder="Senha" autocomplete="current-password">
-    <span class="lock-err" id="lockErr">Senha incorreta. Tente de novo.</span>
-    <button class="btn" id="lockBtn">Entrar</button>
-    <button class="lock-link" id="lockForgot">Esqueci a senha</button>
+<div id="fipeDlg" class="modal" hidden>
+  <div class="modal-card azul">
+    <div class="dlg-body">
+      <h3>Buscar na tabela FIPE</h3>
+      <p>Escolha o veículo na tabela oficial. O preço entra sozinho no cadastro.</p>
+      <div class="f" style="margin-top:14px">
+        <label for="fipeTipo">Tipo</label>
+        <select id="fipeTipo">
+          <option value="caminhoes">Caminhões e micro-ônibus</option>
+          <option value="carros">Carros e utilitários</option>
+          <option value="motos">Motos</option>
+        </select>
+      </div>
+      <div class="f" style="margin-top:10px">
+        <label for="fipeMarca">Marca</label>
+        <select id="fipeMarca"><option value="">Carregando...</option></select>
+      </div>
+      <div class="f" style="margin-top:10px">
+        <label for="fipeModelo">Modelo</label>
+        <select id="fipeModelo"><option value="">Escolha a marca primeiro</option></select>
+      </div>
+      <div class="f" style="margin-top:10px">
+        <label for="fipeAno">Ano</label>
+        <select id="fipeAno"><option value="">Escolha o modelo primeiro</option></select>
+      </div>
+      <div id="fipeResultado" style="margin-top:14px"></div>
+    </div>
+    <div class="dlg-foot">
+      <button class="btn quiet" id="fipeNo">Cancelar</button>
+      <button class="btn" id="fipeYes" disabled>Usar este valor</button>
+    </div>
   </div>
 </div>
 
-<div id="senhaDlg" class="modal" hidden>
-  <div class="modal-card azul">
-  <div class="dlg-body">
-    <h3 id="senhaTitle">Definir senha de acesso</h3>
-    <p>A senha fica guardada só neste computador e é pedida toda vez que a página abrir.</p>
-    <div class="f" style="margin-top:14px">
-      <label for="senha1">Nova senha</label>
-      <input type="password" id="senha1" autocomplete="new-password">
-    </div>
-    <div class="f" style="margin-top:10px">
-      <label for="senha2">Repita a senha</label>
-      <input type="password" id="senha2" autocomplete="new-password">
-      <span class="err" id="senhaErr"></span>
-    </div>
-  </div>
-  <div class="dlg-foot">
-    <button class="btn quiet" id="senhaOff" hidden>Remover senha</button>
-    <button class="btn quiet" id="senhaNo">Cancelar</button>
-    <button class="btn" id="senhaYes">Salvar senha</button>
-  </div>
+<div id="lock" hidden>
+  <div class="lock-card">
+    <span class="lock-mark" id="lockLoja">Cebolinha Caminhões</span>
+    <h2 id="lockTitle">Entrar no sistema</h2>
+    <p id="lockSub">Use o e-mail e a senha cadastrados para você.</p>
+    <input type="email" id="lockEmail" placeholder="E-mail" autocomplete="username" inputmode="email">
+    <input type="password" id="lockPass" placeholder="Senha" autocomplete="current-password" style="margin-top:8px">
+    <span class="lock-err" id="lockErr"></span>
+    <button class="btn" id="lockBtn">Entrar</button>
+    <button class="lock-link" id="lockForgot">Esqueci minha senha</button>
   </div>
 </div>
+
+
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
 <script>
 (function(){
@@ -916,44 +958,57 @@
 /* =========================================================
    1. Armazenamento
    ========================================================= */
-const KEY = "controle-caminhoes-v1";
-const mem = {};
+const KEY_LOCAL = "controle-caminhoes-v1";   // dados antigos, deste computador
 
-const store = {
-  async get(){
-    try{
-      if (window.storage && window.storage.get){
-        const r = await window.storage.get(KEY);
-        return r && r.value ? JSON.parse(r.value) : null;
-      }
-      if (window.localStorage){
-        const v = localStorage.getItem(KEY);
-        return v ? JSON.parse(v) : null;
-      }
-      return mem[KEY] || null;
-    }catch(e){ return mem[KEY] || null; }
-  },
-  async set(data){
-    const txt = JSON.stringify(data);
-    mem[KEY] = data;
-    try{
-      if (window.storage && window.storage.set){ await window.storage.set(KEY, txt); return true; }
-      if (window.localStorage){ localStorage.setItem(KEY, txt); return true; }
-    }catch(e){ return false; }
-    return false;
-  }
+const firebaseConfig = {
+  apiKey: "AIzaSyCubBOKSm7D5SLNpeZZ3uW8i2WfT2fEeR8",
+  authDomain: "controle-caminhoes-3d8e6.firebaseapp.com",
+  projectId: "controle-caminhoes-3d8e6",
+  storageBucket: "controle-caminhoes-3d8e6.firebasestorage.app",
+  messagingSenderId: "306892982707",
+  appId: "1:306892982707:web:d425169699a8ac6cb7e3c6"
 };
 
-let state = { shopName:"", logo:undefined, indicePadrao:0, senhaHash:null, trucks:[], reforms:[], sales:[] };
+let db = null, auth = null, docRef = null, nuvemOK = false, erroNuvem = "";
+try{
+  if (window.firebase && firebase.initializeApp){
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    auth = firebase.auth();
+    docRef = db.collection("dados").doc("loja");
+    nuvemOK = true;
+    try{ db.enablePersistence({synchronizeTabs:true}).catch(()=>{}); }catch(e){}
+  }else{
+    erroNuvem = "Não foi possível carregar o Firebase. Verifique a conexão com a internet.";
+  }
+}catch(e){
+  erroNuvem = "Erro ao conectar: " + e.message;
+}
+
+let state = { shopName:"", logo:null, indicePadrao:0, trucks:[], reforms:[], sales:[] };
 let editingTruckId = null;
 let editingReformId = null;
 let editingSaleId = null;
+let ouvindo = null;
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 
+function statusNuvem(txt){ const el = document.getElementById("statusNuvem"); if (el) el.textContent = txt; }
+
+// salva tudo na nuvem; quem estiver com a página aberta recebe na hora
 async function persist(){
-  const ok = await store.set(state);
-  if (!ok) note("Não foi possível salvar. Baixe um backup para não perder os dados.","bad");
+  if (!nuvemOK){ note("Sem conexão com o banco de dados. Baixe um backup para não perder o que digitou.","bad"); return; }
+  if (!auth.currentUser){ note("Sua sessão expirou. Entre de novo para salvar.","bad"); return; }
+  try{
+    const limpo = JSON.parse(JSON.stringify(state));   // remove campos vazios que o banco não aceita
+    limpo.atualizadoEm = Date.now();
+    limpo.atualizadoPor = auth.currentUser.email || "";
+    await docRef.set(limpo);
+    statusNuvem("Salvo na nuvem às " + new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}));
+  }catch(e){
+    note("Não foi possível salvar: " + e.message,"bad");
+    statusNuvem("Falha ao salvar. Baixe um backup.");
+  }
 }
 
 /* =========================================================
@@ -1183,7 +1238,7 @@ const tf = {
   anoFab:$("t_anoFab"), anoMod:$("t_anoMod"), km:$("t_km"), eixos:$("t_eixos"),
   chassi:$("t_chassi"), renavam:$("t_renavam"), dataCompra:$("t_dataCompra"),
   cidade:$("t_cidade"), uf:$("t_uf"), vendedor:$("t_vendedor"), telVendedor:$("t_telVendedor"),
-  proprietario:$("t_proprietario"), valorCompra:$("t_valorCompra"), docs:$("t_docs"), indice:$("t_indice"), obs:$("t_obs")
+  proprietario:$("t_proprietario"), valorCompra:$("t_valorCompra"), docs:$("t_docs"), indice:$("t_indice"), fipe:$("t_fipe"), obs:$("t_obs")
 };
 
 fillUF(tf.uf);
@@ -1193,7 +1248,7 @@ maskCode(tf.renavam,11,true);
 maskInt(tf.km);
 maskPhone(tf.telVendedor);
 maskPhone($("s_telComprador"));
-[tf.valorCompra,tf.docs,tf.indice,$("r_valor"),$("s_valor"),$("s_comissao")].forEach(maskMoney);
+[tf.valorCompra,tf.docs,tf.indice,tf.fipe,$("r_valor"),$("s_valor"),$("s_comissao")].forEach(maskMoney);
 
 // chassi: maiúsculas, sem I, O e Q (não existem em chassi)
 tf.chassi.addEventListener("input",()=>{
@@ -1394,6 +1449,10 @@ $("truckForm").addEventListener("submit",async ev=>{
     proprietario:titleCase(tf.proprietario.value),
     valorCompra:valor, docs:toNumber(tf.docs.value),
     indice:toNumber(tf.indice.value),
+    fipe:toNumber(tf.fipe.value),
+    fipeRef: fipeAtual.ref || (state.trucks.find(x=>x.id===editingTruckId)||{}).fipeRef || "",
+    fipeCodigo: fipeAtual.codigo || (state.trucks.find(x=>x.id===editingTruckId)||{}).fipeCodigo || "",
+    fipeDescricao: fipeAtual.descricao || (state.trucks.find(x=>x.id===editingTruckId)||{}).fipeDescricao || "",
     obs:tf.obs.value.trim()
   };
 
@@ -1426,6 +1485,9 @@ function resetTruckForm(){
   $("truckCancel").hidden = true;
   tf.categoria.value = "Caminhão";
   tf.indice.value = state.indicePadrao ? plain(state.indicePadrao) : "";
+  tf.fipe.value = "";
+  fipeAtual = { valor:0, ref:"", codigo:"", descricao:"" };
+  mostrarRefFipe();
   ajustaCategoria();
   tf.dataCompra.value = todayISO();
 }
@@ -1449,6 +1511,9 @@ function editTruck(id){
   tf.valorCompra.value = t.valorCompra ? plain(t.valorCompra) : "";
   tf.docs.value = t.docs ? plain(t.docs) : "";
   tf.indice.value = t.indice ? plain(t.indice) : "";
+  tf.fipe.value = t.fipe ? plain(t.fipe) : "";
+  fipeAtual = { valor:t.fipe||0, ref:t.fipeRef||"", codigo:t.fipeCodigo||"", descricao:t.fipeDescricao||"" };
+  mostrarRefFipe();
   tf.obs.value = t.obs||"";
 
   $("truckForm").classList.add("is-editing");
@@ -1610,7 +1675,7 @@ function deleteReform(id){
 const sf = {
   truck:$("s_truck"), valor:$("s_valor"), data:$("s_data"), plataforma:$("s_plataforma"),
   pagamento:$("s_pagamento"), comprador:$("s_comprador"), telComprador:$("s_telComprador"),
-  vendedor:$("s_vendedor"),
+  vendedor:$("s_vendedor"), aniversario:$("s_aniversario"),
   cidade:$("s_cidade"), uf:$("s_uf"), comissao:$("s_comissao"), obs:$("s_obs")
 };
 
@@ -1665,6 +1730,7 @@ $("saleForm").addEventListener("submit",async ev=>{
     pagamento: sf.pagamento.value,
     comprador: titleCase(sf.comprador.value),
     telComprador: sf.telComprador.value.trim(),
+    aniversario: sf.aniversario.value,
     vendedor: titleCase(sf.vendedor.value),
     cidade: titleCase(sf.cidade.value),
     uf: sf.uf.value,
@@ -1713,6 +1779,7 @@ function editSale(id){
   sf.pagamento.value = s.pagamento||"";
   sf.comprador.value = s.comprador||"";
   sf.telComprador.value = s.telComprador||"";
+  sf.aniversario.value = s.aniversario||"";
   sf.vendedor.value = s.vendedor||"";
   sf.cidade.value = s.cidade||"";
   sf.uf.value = s.uf||"";
@@ -1930,6 +1997,7 @@ function renderConsolidado(){
   const corr   = patio.reduce((s,t)=>s+correcaoDe(t),0);
   const custo  = compra + docs + refor;
   const corrigido = custo + corr;
+  const fipeTotal = patio.reduce((s,t)=>s+(t.fipe||0),0);
   const diasArr = patio.map(t=>daysBetween(t.dataCompra,null)).filter(d=>d!==null);
   const mediaDias = diasArr.length ? Math.round(diasArr.reduce((a,b)=>a+b,0)/diasArr.length) : 0;
 
@@ -1937,7 +2005,9 @@ function renderConsolidado(){
     dest("Veículos no pátio", int(patio.length), "forte", patio.length===1?"1 veículo parado":`${patio.length} veículos parados`) +
     dest("Valor total investido", brl(custo), "forte", "Compra + documentação + reformas") +
     (corr > 0 ? dest("Valor corrigido hoje", brl(corrigido), "laranja", `${brl(corr)} de correção acumulada`) : "") +
-    dest("Tempo médio no pátio", mediaDias + (mediaDias===1?" dia":" dias"), "", "Desde a data da compra");
+    dest("Tempo médio no pátio", mediaDias + (mediaDias===1?" dia":" dias"), "", "Desde a data da compra") +
+    (fipeTotal > 0 ? dest("Valor de tabela (FIPE)", brl(fipeTotal), "verde",
+        `${fipeTotal-corrigido>=0?"R$ "+plain(fipeTotal-corrigido)+" acima":"R$ "+plain(corrigido-fipeTotal)+" abaixo"} do custo corrigido`) : "");
 
   if (!patio.length){
     $("segregacao").innerHTML = `<p class="vazio-bloco">Nenhum veículo no pátio no momento.</p>`;
@@ -2059,6 +2129,7 @@ function renderConsolidado(){
       <td class="num">${r?brl(r):"—"}</td>
       <td class="num">${x>0?brl(x):"—"}</td>
       <td class="num strong">${brl(tot)}</td>
+      <td class="num">${t.fipe?brl(t.fipe):"—"}${t.fipe?`<span class="sub">${t.fipe-tot>=0?"+":"−"} ${brl(Math.abs(t.fipe-tot))}</span>`:""}</td>
       <td class="num">${sold?brl(sold.valor):"—"}</td>
       <td class="num ${lucro===null?"":(lucro>=0?"pos":"neg")}">${lucro===null?"—":brl(lucro)}</td>
     </tr>`;
@@ -2075,9 +2146,30 @@ function renderConsolidado(){
       <td class="num">${brl(sc)}</td><td class="num">${brl(sd)}</td>
       <td class="num">${brl(sr)}</td><td class="num">${sx>0?brl(sx):"—"}</td>
       <td class="num">${brl(sc+sd+sr+sx)}</td>
+      <td class="num">${list.reduce((s,t)=>s+(t.fipe||0),0)?brl(list.reduce((s,t)=>s+(t.fipe||0),0)):"—"}</td>
       <td class="num">${sv?brl(sv):"—"}</td>
       <td class="num ${sl>=0?"pos":"neg"}">${sv?brl(sl):"—"}</td>
     </tr>` : "";
+
+  /* ---------- aniversários ---------- */
+  const anivs = listaAniversarios(90);
+  $("anivHint").textContent = anivs.length
+    ? `${anivs.length} comprador(es) fazem aniversário nos próximos 90 dias`
+    : "Para enviar o cartãozinho na data";
+  $("anivLista").innerHTML = anivs.length
+    ? anivs.map(s=>{
+        const t = state.trucks.find(x=>x.id===s.truckId);
+        const quando = s.faltam === 0 ? "<strong>é hoje!</strong>"
+                     : s.faltam === 1 ? "<strong>é amanhã</strong>"
+                     : `faltam ${s.faltam} dias`;
+        return `<div class="gr" style="grid-template-columns:1fr auto">
+          <div class="nome">${esc(s.comprador)}
+            <small>${diaMes(s.aniversario)} · ${quando}${s.telComprador?" · "+esc(s.telComprador):""}${t?" · comprou o "+esc(fmtPlate(t.placa)):""}</small>
+          </div>
+          <div class="dir">${s.faltam <= 15 ? '<span class="tag t-reforma">enviar cartão</span>' : ""}</div>
+        </div>`;
+      }).join("")
+    : `<p class="vazio-bloco">Nenhum aniversário cadastrado. O campo fica na aba de saída de estoque, junto com os dados do comprador.</p>`;
 
   /* ---------- pontos de atenção ---------- */
   const av = [];
@@ -2088,6 +2180,9 @@ function renderConsolidado(){
   state.sales.filter(s=>profitOf(s)<0).slice(0,3).forEach(s=>{
     const t = state.trucks.find(x=>x.id===s.truckId);
     av.push(`<strong>${esc(t?fmtPlate(t.placa):"Venda")}</strong> foi vendido abaixo do custo: ${brl(profitOf(s))}.`);
+  });
+  listaAniversarios(15).slice(0,4).forEach(s=>{
+    av.push(`Aniversário de <strong>${esc(s.comprador)}</strong> em ${diaMes(s.aniversario)}${s.faltam===0?" — é hoje":` — faltam ${s.faltam} dias`}. Hora de mandar o cartão.`);
   });
   state.trucks.filter(t=>!isSold(t.id) && (!t.chassi || !t.renavam)).slice(0,3)
        .forEach(t=>av.push(`<strong>${esc(fmtPlate(t.placa))}</strong> está sem chassi ou Renavam cadastrado.`));
@@ -2154,7 +2249,7 @@ $("btnCsv").addEventListener("click",()=>{
   const head = ["Placa","Categoria","Marca","Modelo","Ano fab.","Ano mod.","Configuração","Tração","Carroceria","Cor","Km/Horas","Chassi","Renavam",
     "Cidade de compra","UF","Vendedor","Telefone do vendedor","Proprietário anterior","Data da compra","Dias",
     "Valor de compra","Documentação","Total reformas","Custo total",
-    "Meses desde a compra","Índice mensal (%)","Correção","Custo corrigido","Data da venda","Plataforma","Comprador","Telefone do comprador","Vendedor da venda","Valor de venda","Comissão","Lucro"];
+    "Meses desde a compra","Índice mensal (%)","Correção","Custo corrigido","Preço FIPE","Tabela FIPE de","Código FIPE","Data da venda","Plataforma","Comprador","Telefone do comprador","Aniversário do comprador","Vendedor da venda","Valor de venda","Comissão","Lucro"];
   const rows = list.map(t=>{
     const s = saleOf(t.id);
     const tot = costTotal(t);
@@ -2163,7 +2258,8 @@ $("btnCsv").addEventListener("click",()=>{
       daysBetween(t.dataCompra, s?s.data:null) ?? "",
       plain(t.valorCompra),plain(t.docs),plain(reformTotal(t.id)),plain(tot),
       mesesDe(t), plain(t.indice), plain(correcaoDe(t)), plain(custoCorrigido(t)),
-      s?fmtDate(s.data):"", s?s.plataforma:"", s?s.comprador:"", s?s.telComprador:"", s?s.vendedor:"",
+      t.fipe?plain(t.fipe):"", t.fipeRef||"", t.fipeCodigo||"",
+      s?fmtDate(s.data):"", s?s.plataforma:"", s?s.comprador:"", s?s.telComprador:"", s&&s.aniversario?fmtDate(s.aniversario):"", s?s.vendedor:"",
       s?plain(s.valor):"", s?plain(s.comissao):"", s?plain(profitOf(s)):""];
   });
   const csv = [head,...rows].map(r=>r.map(c=>`"${String(c==null?"":c).replace(/"/g,'""')}"`).join(";")).join("\r\n");
@@ -2190,7 +2286,7 @@ $("fileRestore").addEventListener("change",ev=>{
       `Os dados atuais serão substituídos por ${data.trucks.length} caminhão(ões), ${(data.reforms||[]).length} reforma(s) e ${(data.sales||[]).length} venda(s) do arquivo.`,
       "Restaurar",
       async ()=>{
-        state = migrate({ shopName:data.shopName||"", logo:data.logo, indice:data.indice, indicePadrao:data.indicePadrao, senhaHash:state.senhaHash, trucks:data.trucks||[], reforms:data.reforms||[], sales:data.sales||[] });
+        state = migrate({ shopName:data.shopName||"", logo:data.logo, indice:data.indice, indicePadrao:data.indicePadrao, trucks:data.trucks||[], reforms:data.reforms||[], sales:data.sales||[] });
               renderLogo();
         $("shopName").value = state.shopName;
         await persist(); renderAll();
@@ -2209,7 +2305,6 @@ function migrate(data){
     shopName: data.shopName || "",
     logo: data.logo,
     indicePadrao: Number(data.indicePadrao) || Number(data.indice) || 0,
-    senhaHash: data.senhaHash || null,
     trucks: data.trucks || [],
     reforms: data.reforms || [],
     sales: data.sales || []
@@ -2289,149 +2384,315 @@ $("btnLogoOff").addEventListener("click",async()=>{
   note("Logo removido.","warn");
 });
 
+
 /* =========================================================
-   Senha de acesso
+   Consulta à tabela FIPE
    ========================================================= */
-async function hashSenha(txt){
-  const base = "pátio::" + txt;
-  try{
-    if (window.crypto && crypto.subtle && crypto.subtle.digest){
-      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(base));
-      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
-    }
-  }catch(e){ /* contexto sem crypto: usa a alternativa abaixo */ }
-  let h1 = 5381, h2 = 52711;
-  for (let i=0;i<base.length;i++){
-    const c = base.charCodeAt(i);
-    h1 = (h1*33 ^ c) >>> 0;
-    h2 = (h2*31 + c) >>> 0;
-  }
-  return "f"+h1.toString(16)+h2.toString(16);
+const FIPE_API = "https://parallelum.com.br/fipe/api/v1";
+let fipeAtual = { valor:0, ref:"", codigo:"", descricao:"" };
+let fipeEscolhido = null;
+
+function mostrarRefFipe(){
+  const el = $("fipeRefTexto");
+  if (!el) return;
+  el.textContent = fipeAtual.ref
+    ? `Tabela de ${fipeAtual.ref}${fipeAtual.codigo?" · código "+fipeAtual.codigo:""}`
+    : "Busque na tabela ou digite o valor à mão";
 }
 
-function mostrarBloqueio(){
+async function fipeGet(caminho){
+  const r = await fetch(FIPE_API + caminho, {cache:"no-store"});
+  if (!r.ok) throw new Error("A consulta falhou (" + r.status + ")");
+  return r.json();
+}
+function encher(sel, itens, textoVazio){
+  sel.innerHTML = `<option value="">${textoVazio}</option>` +
+    itens.map(i=>`<option value="${esc(String(i.codigo))}">${esc(i.nome)}</option>`).join("");
+}
+function fipeErro(msg){
+  $("fipeResultado").innerHTML = `<p class="fipe-erro">${esc(msg)} Você pode fechar e digitar o valor à mão.</p>`;
+  $("fipeYes").disabled = true;
+}
+function fipeAguarde(msg){
+  $("fipeResultado").innerHTML = `<p class="hint">${esc(msg)}</p>`;
+}
+
+$("btnFipe").addEventListener("click",async()=>{
+  fipeEscolhido = null;
+  $("fipeYes").disabled = true;
+  $("fipeResultado").innerHTML = "";
+  $("fipeModelo").innerHTML = '<option value="">Escolha a marca primeiro</option>';
+  $("fipeAno").innerHTML = '<option value="">Escolha o modelo primeiro</option>';
+  $("fipeTipo").value = tf.categoria.value === "Carro / Utilitário leve" ? "carros" : "caminhoes";
+  $("fipeDlg").hidden = false;
+  carregarMarcas();
+});
+$("fipeNo").addEventListener("click",()=>{ $("fipeDlg").hidden = true; });
+$("fipeTipo").addEventListener("change",carregarMarcas);
+
+async function carregarMarcas(){
+  const sel = $("fipeMarca");
+  sel.innerHTML = '<option value="">Carregando marcas...</option>';
+  try{
+    const marcas = await fipeGet(`/${$("fipeTipo").value}/marcas`);
+    encher(sel, marcas, "Selecione a marca");
+    const digitada = (tf.marca.value||"").toLowerCase().slice(0,4);
+    if (digitada){
+      const achou = marcas.find(m=>m.nome.toLowerCase().includes(digitada));
+      if (achou){ sel.value = String(achou.codigo); carregarModelos(); }
+    }
+  }catch(e){
+    sel.innerHTML = '<option value="">Não foi possível carregar</option>';
+    fipeErro("Não consegui falar com a tabela FIPE agora.");
+  }
+}
+
+$("fipeMarca").addEventListener("change",carregarModelos);
+async function carregarModelos(){
+  const sel = $("fipeModelo");
+  const marca = $("fipeMarca").value;
+  $("fipeAno").innerHTML = '<option value="">Escolha o modelo primeiro</option>';
+  $("fipeYes").disabled = true;
+  if (!marca){ sel.innerHTML = '<option value="">Escolha a marca primeiro</option>'; return; }
+  sel.innerHTML = '<option value="">Carregando modelos...</option>';
+  try{
+    const r = await fipeGet(`/${$("fipeTipo").value}/marcas/${marca}/modelos`);
+    encher(sel, r.modelos || [], "Selecione o modelo");
+    fipeAguarde("Escolha o modelo e o ano.");
+  }catch(e){
+    sel.innerHTML = '<option value="">Não foi possível carregar</option>';
+    fipeErro("Não consegui carregar os modelos.");
+  }
+}
+
+$("fipeModelo").addEventListener("change",carregarAnos);
+async function carregarAnos(){
+  const sel = $("fipeAno");
+  const marca = $("fipeMarca").value, modelo = $("fipeModelo").value;
+  $("fipeYes").disabled = true;
+  if (!modelo){ sel.innerHTML = '<option value="">Escolha o modelo primeiro</option>'; return; }
+  sel.innerHTML = '<option value="">Carregando anos...</option>';
+  try{
+    const anos = await fipeGet(`/${$("fipeTipo").value}/marcas/${marca}/modelos/${modelo}/anos`);
+    encher(sel, anos, "Selecione o ano");
+    const ano = tf.anoMod.value || tf.anoFab.value;
+    if (ano){
+      const achou = anos.find(a=>String(a.nome).startsWith(ano));
+      if (achou){ sel.value = String(achou.codigo); buscarPreco(); }
+    }
+  }catch(e){
+    sel.innerHTML = '<option value="">Não foi possível carregar</option>';
+    fipeErro("Não consegui carregar os anos.");
+  }
+}
+
+$("fipeAno").addEventListener("change",buscarPreco);
+async function buscarPreco(){
+  const marca = $("fipeMarca").value, modelo = $("fipeModelo").value, ano = $("fipeAno").value;
+  $("fipeYes").disabled = true;
+  if (!ano) return;
+  fipeAguarde("Consultando o preço...");
+  try{
+    const d = await fipeGet(`/${$("fipeTipo").value}/marcas/${marca}/modelos/${modelo}/anos/${ano}`);
+    const valor = toNumber(String(d.Valor||"").replace(/[^\d,]/g,"").replace(",","")) || 0;
+    fipeEscolhido = {
+      valor,
+      ref: (d.MesReferencia||"").trim(),
+      codigo: d.CodigoFipe || "",
+      descricao: [d.Marca, d.Modelo, d.AnoModelo].filter(Boolean).join(" · ")
+    };
+    $("fipeResultado").innerHTML = `<div class="fipe-box">
+        <div class="valor">${brl(valor)}</div>
+        <div class="det">${esc(fipeEscolhido.descricao)}</div>
+        <div class="det">Tabela de ${esc(fipeEscolhido.ref)} · código ${esc(fipeEscolhido.codigo)}</div>
+      </div>`;
+    $("fipeYes").disabled = false;
+  }catch(e){
+    fipeErro("Não consegui buscar o preço.");
+  }
+}
+
+$("fipeYes").addEventListener("click",()=>{
+  if (!fipeEscolhido) return;
+  fipeAtual = { ...fipeEscolhido };
+  tf.fipe.value = plain(fipeEscolhido.valor);
+  if (!tf.marca.value && fipeEscolhido.descricao) tf.marca.value = marcaCase(fipeEscolhido.descricao.split(" · ")[0]||"");
+  mostrarRefFipe();
+  $("fipeDlg").hidden = true;
+  note("Preço da tabela FIPE preenchido.");
+});
+$("fipeDlg").addEventListener("click",ev=>{ if (ev.target.id === "fipeDlg") $("fipeDlg").hidden = true; });
+
+/* =========================================================
+   Aniversários dos compradores
+   ========================================================= */
+function diasAteAniversario(iso){
+  if (!iso) return null;
+  const p = iso.split("-");
+  if (p.length !== 3) return null;
+  const hoje = new Date(); hoje.setHours(12,0,0,0);
+  let prox = new Date(hoje.getFullYear(), parseInt(p[1],10)-1, parseInt(p[2],10), 12,0,0,0);
+  if (isNaN(prox)) return null;
+  if (prox < hoje) prox = new Date(hoje.getFullYear()+1, parseInt(p[1],10)-1, parseInt(p[2],10), 12,0,0,0);
+  return Math.round((prox - hoje)/86400000);
+}
+function diaMes(iso){
+  const p = (iso||"").split("-");
+  return p.length === 3 ? `${p[2]}/${p[1]}` : "—";
+}
+function listaAniversarios(limiteDias){
+  return state.sales
+    .filter(s=>s.aniversario && s.comprador)
+    .map(s=>({ ...s, faltam: diasAteAniversario(s.aniversario) }))
+    .filter(s=>s.faltam !== null && s.faltam <= limiteDias)
+    .sort((a,b)=>a.faltam-b.faltam);
+}
+
+/* =========================================================
+   Login e sincronização
+   ========================================================= */
+function mostrarLogin(msg){
   document.body.classList.add("locked");
   $("lock").hidden = false;
   $("lockPass").value = "";
-  $("lockErr").classList.remove("on");
-  setTimeout(()=>$("lockPass").focus(),60);
+  $("lockErr").classList.toggle("on", !!msg);
+  if (msg) $("lockErr").textContent = msg;
+  setTimeout(()=>{ ($("lockEmail").value ? $("lockPass") : $("lockEmail")).focus(); },80);
 }
-function liberar(){
+function esconderLogin(){
   document.body.classList.remove("locked");
   $("lock").hidden = true;
   $("lockPass").value = "";
-  atualizaBotoesSenha();
-}
-function atualizaBotoesSenha(){
-  const tem = !!state.senhaHash;
-  $("btnSenha").textContent = tem ? "Trocar senha" : "Definir senha";
-  $("btnBloquear").hidden = !tem;
-  $("senhaOff").hidden = !tem;
+  $("lockErr").classList.remove("on");
 }
 
-async function tentarEntrar(){
-  const h = await hashSenha($("lockPass").value);
-  if (h === state.senhaHash){
-    liberar();
-  }else{
+const ERROS = {
+  "auth/invalid-email":"E-mail inválido. Confira o que foi digitado.",
+  "auth/user-not-found":"Não existe usuário com esse e-mail.",
+  "auth/wrong-password":"Senha incorreta. Tente de novo.",
+  "auth/invalid-credential":"E-mail ou senha incorretos.",
+  "auth/too-many-requests":"Muitas tentativas. Espere alguns minutos e tente de novo.",
+  "auth/network-request-failed":"Sem internet. Verifique a conexão.",
+  "auth/unauthorized-domain":"Este endereço não está autorizado no Firebase. Adicione-o em Authentication → Settings → Authorized domains."
+};
+const textoErro = e => ERROS[e.code] || (e.message || "Não foi possível entrar.");
+
+async function entrar(){
+  if (!nuvemOK){ mostrarLogin(erroNuvem || "Sem conexão com o servidor."); return; }
+  const email = $("lockEmail").value.trim();
+  const senha = $("lockPass").value;
+  if (!email || !senha){ mostrarLogin("Preencha o e-mail e a senha."); return; }
+  $("lockBtn").textContent = "Entrando...";
+  try{
+    await auth.signInWithEmailAndPassword(email, senha);
+  }catch(e){
+    mostrarLogin(textoErro(e));
+  }finally{
+    $("lockBtn").textContent = "Entrar";
+  }
+}
+$("lockBtn").addEventListener("click",entrar);
+["lockEmail","lockPass"].forEach(id=>$(id).addEventListener("keydown",ev=>{ if (ev.key === "Enter") entrar(); }));
+
+$("lockForgot").addEventListener("click",async()=>{
+  const email = $("lockEmail").value.trim();
+  if (!email){ mostrarLogin("Digite seu e-mail acima e clique de novo."); return; }
+  try{
+    await auth.sendPasswordResetEmail(email);
     $("lockErr").classList.add("on");
-    $("lockPass").value = "";
-    $("lockPass").focus();
-  }
+    $("lockErr").textContent = "Enviamos um link de redefinição para " + email + ".";
+  }catch(e){ mostrarLogin(textoErro(e)); }
+});
+
+$("btnSair").addEventListener("click",()=>{
+  confirmAction("Sair do sistema",
+    "Você vai precisar do e-mail e da senha para entrar de novo. Os dados continuam salvos na nuvem.",
+    "Sair",
+    async ()=>{ try{ await auth.signOut(); }catch(e){} });
+});
+
+// escuta o banco: qualquer mudança feita em outro computador chega aqui
+function ligarSincronizacao(){
+  if (ouvindo) return;
+  statusNuvem("Carregando dados...");
+  ouvindo = docRef.onSnapshot(
+    snap=>{
+      if (snap.exists){
+        const d = snap.data() || {};
+        state = migrate(d);
+        state.logo = d.logo === undefined ? null : d.logo;
+        $("shopName").value = state.shopName || "";
+        ["c_indice","t_indice"].forEach(id=>{ if ($(id)) $(id).value = ""; });
+        tf.indice.value = state.indicePadrao ? plain(state.indicePadrao) : "";
+        renderLogo();
+        $("lockLoja").textContent = state.shopName || "Acesso restrito";
+        renderAll();
+        const quando = d.atualizadoEm ? new Date(d.atualizadoEm).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+        statusNuvem(`Dados na nuvem${quando?" · última alteração em "+quando:""}${d.atualizadoPor?" por "+d.atualizadoPor:""}`);
+      }else{
+        statusNuvem("Banco vazio. Cadastre um veículo ou importe seus dados.");
+        renderAll();
+      }
+    },
+    err=>{
+      statusNuvem("Erro de leitura: " + err.message);
+      note("Não foi possível ler os dados: " + err.message,"bad");
+    }
+  );
 }
-$("lockBtn").addEventListener("click",tentarEntrar);
-$("lockPass").addEventListener("keydown",ev=>{ if (ev.key === "Enter") tentarEntrar(); });
+function desligarSincronizacao(){
+  if (ouvindo){ ouvindo(); ouvindo = null; }
+}
 
-$("lockForgot").addEventListener("click",()=>{
-  confirmAction("Esqueci a senha",
-    "Não há como recuperar a senha. A única saída é apagar tudo e começar de novo, ou restaurar um backup depois. Todos os veículos, reformas e vendas deste computador serão perdidos.",
-    "Apagar tudo",
-    async ()=>{
-      state = { shopName:"", logo:undefined, indicePadrao:0, senhaHash:null, trucks:[], reforms:[], sales:[] };
-      await persist();
-      location.reload();
-    });
-});
-
-const senhaDlg = $("senhaDlg");
-$("btnSenha").addEventListener("click",()=>{
-  $("senhaTitle").textContent = state.senhaHash ? "Trocar senha de acesso" : "Definir senha de acesso";
-  $("senha1").value = ""; $("senha2").value = "";
-  $("senhaErr").textContent = "";
-  $("senhaErr").closest(".f").classList.remove("invalid");
-  atualizaBotoesSenha();
-  senhaDlg.hidden = false;
-  setTimeout(()=>$("senha1").focus(),60);
-});
-$("senhaNo").addEventListener("click",()=>{ senhaDlg.hidden = true; });
-$("senhaYes").addEventListener("click",async()=>{
-  const a = $("senha1").value, b = $("senha2").value;
-  const campo = $("senhaErr").closest(".f");
-  if (a.length < 4){
-    campo.classList.add("invalid");
-    $("senhaErr").textContent = "Use pelo menos 4 caracteres.";
+// traz para a nuvem o que já estava salvo neste computador
+$("btnImportar").addEventListener("click",()=>{
+  let antigo = null;
+  try{ const v = localStorage.getItem(KEY_LOCAL); if (v) antigo = JSON.parse(v); }catch(e){}
+  if (!antigo || !Array.isArray(antigo.trucks) || !antigo.trucks.length){
+    note("Não encontrei dados salvos neste computador.","warn");
     return;
   }
-  if (a !== b){
-    campo.classList.add("invalid");
-    $("senhaErr").textContent = "As duas senhas não são iguais.";
-    return;
-  }
-  state.senhaHash = await hashSenha(a);
-  await persist();
-  senhaDlg.hidden = true;
-  atualizaBotoesSenha();
-  note("Senha salva. Ela será pedida toda vez que a página abrir.");
-});
-$("senhaOff").addEventListener("click",()=>{
-  senhaDlg.hidden = true;
-  confirmAction("Remover senha",
-    "O sistema vai abrir direto, sem pedir senha, neste computador.",
-    "Remover",
+  confirmAction("Importar dados deste computador",
+    `Encontrei ${antigo.trucks.length} veículo(s), ${(antigo.reforms||[]).length} reforma(s) e ${(antigo.sales||[]).length} venda(s) salvos aqui. Eles vão substituir o que está na nuvem.`,
+    "Importar",
     async ()=>{
-      state.senhaHash = null;
+      state = migrate(antigo);
       await persist();
-      atualizaBotoesSenha();
-      note("Senha removida.","warn");
+      renderAll();
+      note("Dados enviados para a nuvem.");
     });
-});
-$("btnBloquear").addEventListener("click",mostrarBloqueio);
-
-// fechar as janelas clicando fora ou com Esc
-[["confirmDlg"],["senhaDlg"]].forEach(([id])=>{
-  $(id).addEventListener("click",ev=>{ if (ev.target.id === id) $(id).hidden = true; });
-});
-document.addEventListener("keydown",ev=>{
-  if (ev.key !== "Escape") return;
-  $("confirmDlg").hidden = true;
-  $("senhaDlg").hidden = true;
 });
 
 /* =========================================================
    10. Início
    ========================================================= */
 (async function init(){
-  const saved = await store.get();
-  if (saved && Array.isArray(saved.trucks)){
-    state = migrate(saved);
-    if (saved.logo !== undefined) state.logo = saved.logo;
-    $("shopName").value = state.shopName;
-    if (state.shopName) document.title = state.shopName + " — Controle de estoque, reformas e vendas";
-    await persist();
-  }
-  if (!$("shopName").value){
-    $("shopName").value = "Cebolinha Caminhões";
-    state.shopName = "Cebolinha Caminhões";
-  }
-  renderLogo();
-  $("lockLoja").textContent = state.shopName || "Acesso restrito";
-  atualizaBotoesSenha();
-  if (state.senhaHash) mostrarBloqueio();
-  ajustaCategoria();
   tf.dataCompra.value = todayISO();
   rf.data.value = todayISO();
   sf.data.value = todayISO();
+  ajustaCategoria();
+  renderLogo();
   renderAll();
+
+  if (!nuvemOK){
+    mostrarLogin(erroNuvem || "Sem conexão com o servidor.");
+    statusNuvem("Sem conexão com o banco de dados.");
+    return;
+  }
+
+  auth.onAuthStateChanged(user=>{
+    if (user){
+      esconderLogin();
+      $("btnSair").textContent = "Sair (" + (user.email || "") + ")";
+      ligarSincronizacao();
+    }else{
+      desligarSincronizacao();
+      state = { shopName:"", logo:null, indicePadrao:0, trucks:[], reforms:[], sales:[] };
+      renderAll();
+      statusNuvem("Entre para ver os dados.");
+      mostrarLogin();
+    }
+  });
 })();
 
 })();
